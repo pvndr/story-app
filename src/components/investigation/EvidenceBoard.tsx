@@ -191,6 +191,17 @@ export default function EvidenceBoard() {
     };
   };
 
+  // a sagging thread path (catenary approximation) between two pinned points.
+  // The control point sits below the midpoint by an amount proportional to the
+  // span — gravity pulls real string into a curve, never a straight line.
+  const sagPath = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+    const mx = (a.x + b.x) / 2;
+    const my = (a.y + b.y) / 2;
+    const span = Math.hypot(b.x - a.x, b.y - a.y);
+    const sag = Math.min(46, span * 0.18); // gravity sag in px
+    return `M ${a.x} ${a.y} Q ${mx} ${my + sag} ${b.x} ${b.y}`;
+  };
+
   const handleSelect = (id: ItemId) => {
     if (selected === id) {
       audio.click();
@@ -287,12 +298,9 @@ export default function EvidenceBoard() {
                   ? 0.3
                   : 0.55;
                 return (
-                  <line
+                  <path
                     key={`base-${i}`}
-                    x1={A.x}
-                    y1={A.y}
-                    x2={B.x}
-                    y2={B.y}
+                    d={sagPath(A, B)}
                     className="string-path"
                     style={{
                       opacity: op,
@@ -304,18 +312,15 @@ export default function EvidenceBoard() {
                 );
               })}
 
-              {/* active overlay — the red string draws itself via pathLength */}
+              {/* active overlay — the glowing thread draws itself via pathLength */}
               {links.map(([a, b], i) => {
                 const A = endpoint(a);
                 const B = endpoint(b);
                 const active = isLinkActive(a, b);
                 return (
-                  <motion.line
+                  <motion.path
                     key={`draw-${i}`}
-                    x1={A.x}
-                    y1={A.y}
-                    x2={B.x}
-                    y2={B.y}
+                    d={sagPath(A, B)}
                     initial={false}
                     animate={{
                       pathLength: active ? 1 : 0,
@@ -347,8 +352,11 @@ export default function EvidenceBoard() {
                 const A = endpoint(a);
                 const B = endpoint(b);
                 const active = isLinkActive(a, b);
+                const span = Math.hypot(B.x - A.x, B.y - A.y);
+                const sag = Math.min(46, span * 0.18);
+                // the arrow sits on the sagging curve, ~at t=0.5 where y = my + sag/2
                 const mxPct = ((A.x + B.x) / 2 / boardSize.w) * 100;
-                const myPct = ((A.y + B.y) / 2 / boardSize.h) * 100;
+                const myPct = ((A.y + B.y) / 2 + sag / 2) / boardSize.h * 100;
                 const angle =
                   (Math.atan2(B.y - A.y, B.x - A.x) * 180) / Math.PI;
                 return (
@@ -601,11 +609,14 @@ function PhotoCard({
           className="absolute inset-0 [backface-visibility:hidden] bg-[#e8dcc0] p-1.5 pb-7"
           style={{
             boxShadow: isSelected
-              ? "0 0 28px rgba(231,183,102,0.9), 3px 5px 12px rgba(0,0,0,0.7)"
+              ? "0 0 28px rgba(231,183,102,0.9), 1px 2px 3px rgba(0,0,0,0.4), 4px 7px 14px rgba(0,0,0,0.65), 8px 14px 26px rgba(0,0,0,0.35)"
               : isActive
-              ? "0 0 22px rgba(231,183,102,0.6), 3px 5px 12px rgba(0,0,0,0.7)"
-              : "3px 5px 12px rgba(0,0,0,0.7)",
+              ? "0 0 22px rgba(231,183,102,0.6), 1px 2px 3px rgba(0,0,0,0.4), 4px 7px 14px rgba(0,0,0,0.6)"
+              : "1px 2px 3px rgba(0,0,0,0.4), 4px 7px 14px rgba(0,0,0,0.55), 7px 13px 22px rgba(0,0,0,0.3)",
             transition: "box-shadow 0.6s ease",
+            /* a faint tonal gradient suggests the photo's edges curl away from the board */
+            backgroundImage:
+              "linear-gradient(135deg, rgba(0,0,0,0) 80%, rgba(40,28,12,0.12) 100%)",
           }}
         >
           <div

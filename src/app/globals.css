@@ -154,27 +154,88 @@
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
   z-index: 2;
 }
-
-/* coffee / water stain */
-.stain {
+/* foxing — the faint brown age-spots that appear on old paper. Layer this
+ * behind .grain on any paper surface. */
+.foxing::before {
+  content: "";
   position: absolute;
-  border-radius: 50%;
-  pointer-events: auto;
-  background: radial-gradient(
-    circle,
-    rgba(74, 44, 22, 0.0) 38%,
-    rgba(74, 44, 22, 0.42) 46%,
-    rgba(74, 44, 22, 0.12) 56%,
-    rgba(74, 44, 22, 0.0) 70%
-  );
-  filter: blur(0.4px);
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.5;
+  mix-blend-mode: multiply;
+  background-image:
+    radial-gradient(circle at 12% 22%, rgba(120, 84, 40, 0.22) 0%, transparent 1.4%),
+    radial-gradient(circle at 78% 18%, rgba(110, 76, 36, 0.18) 0%, transparent 1.1%),
+    radial-gradient(circle at 42% 68%, rgba(120, 84, 40, 0.20) 0%, transparent 1.6%),
+    radial-gradient(circle at 88% 72%, rgba(100, 70, 32, 0.16) 0%, transparent 1.0%),
+    radial-gradient(circle at 22% 88%, rgba(120, 84, 40, 0.18) 0%, transparent 1.3%),
+    radial-gradient(circle at 60% 40%, rgba(110, 76, 36, 0.14) 0%, transparent 0.9%);
 }
 
-/* aged edge / deckle */
+/* handwriting ink — subtle bleed + pressure variation.
+ * Applied via .ink-hand, and also auto-applied to every element using the
+ * handwriting font utility so all annotations share the aged-ink look. */
+.ink-hand,
+[class*="font-hand"],
+[style*="--font-hand"] {
+  text-shadow:
+    0 0 0.4px rgba(94, 29, 18, 0.45),
+    0.4px 0.3px 0.6px rgba(94, 29, 18, 0.22);
+  filter: blur(0.15px) contrast(0.96) saturate(1.05);
+}
+
+/* coffee / water stain — multi-ring absorption, irregular, fibered */
+.stain {
+  position: absolute;
+  border-radius: 48% 52% 46% 54% / 52% 48% 54% 46%;
+  pointer-events: auto;
+  background:
+    radial-gradient(
+      circle,
+      rgba(74, 44, 22, 0.0) 30%,
+      rgba(74, 44, 22, 0.46) 38%,
+      rgba(74, 44, 22, 0.10) 44%,
+      rgba(74, 44, 22, 0.38) 52%,
+      rgba(74, 44, 22, 0.06) 60%,
+      rgba(74, 44, 22, 0.22) 68%,
+      rgba(74, 44, 22, 0.0) 78%
+    ),
+    radial-gradient(
+      ellipse at 40% 35%,
+      rgba(94, 58, 28, 0.18) 0%,
+      transparent 55%
+    );
+  filter: blur(0.5px);
+  mix-blend-mode: multiply;
+}
+/* a darker, older ring (tea / age) variant */
+.stain.old {
+  background:
+    radial-gradient(
+      circle,
+      rgba(40, 26, 12, 0.0) 34%,
+      rgba(40, 26, 12, 0.30) 42%,
+      rgba(40, 26, 12, 0.08) 50%,
+      rgba(40, 26, 12, 0.24) 58%,
+      rgba(40, 26, 12, 0.0) 70%
+    );
+}
+
+/* aged edge / deckle — torn fibrous edge via layered inset + outer roughness */
 .deckle {
   box-shadow:
     inset 0 0 22px rgba(60, 44, 20, 0.45),
-    inset 0 0 60px rgba(40, 28, 12, 0.3);
+    inset 0 0 60px rgba(40, 28, 12, 0.3),
+    0 1px 0 rgba(90, 74, 44, 0.18);
+  /* rough fibrous edge using a faint jagged mask */
+  -webkit-mask-image: linear-gradient(#000, #000);
+  mask-image: linear-gradient(#000, #000);
+}
+/* explicit torn-edge treatment for paper sheets */
+.paper.torn-edge,
+.paper-dark.torn-edge {
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.35));
 }
 
 /* ============================================================
@@ -199,38 +260,116 @@
   );
 }
 
-/* redaction bar */
+/* redaction bar — heavy marker stroke with visible brush texture + skew */
 .redact {
-  background: var(--ink);
+  position: relative;
+  background:
+    repeating-linear-gradient(
+      86deg,
+      #0a0704 0px,
+      #0a0704 2px,
+      #1a1208 2px,
+      #1a1208 4px,
+      #0d0905 4px,
+      #0d0905 6px
+    ),
+    linear-gradient(180deg, #15100a 0%, #0a0704 100%);
   color: transparent;
   user-select: none;
-  border-radius: 1px;
-  padding: 0 2px;
+  border-radius: 1px 2px 1px 2px;
+  padding: 0 3px;
+  display: inline-block;
+  transform: rotate(-0.7deg);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.5), inset 0 0 1px rgba(60,44,20,0.5);
+  filter: contrast(1.15);
+}
+.redact::before {
+  /* dry-brush gaps — the marker missed spots, showing paper through */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='14'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='2.2' numOctaves='2' seed='3'/%3E%3CfeColorMatrix values='0 0 0 0 0.5  0 0 0 0 0.4  0 0 0 0 0.2  0 0 0 0.7 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23r)'/%3E%3C/svg%3E");
+  mix-blend-mode: screen;
+  opacity: 0.5;
+  pointer-events: none;
+  border-radius: inherit;
 }
 
-/* stamp */
+/* stamp — distressed ink, uneven edges, partial impression */
 .stamp {
+  position: relative;
   font-family: var(--font-typewriter), monospace;
-  border: 3px solid var(--rust);
+  border: 3px double var(--rust);
   color: var(--rust);
   padding: 6px 14px;
   letter-spacing: 0.18em;
   transform: rotate(-9deg);
-  opacity: 0.82;
+  opacity: 0.78;
   text-transform: uppercase;
   box-shadow: inset 0 0 0 1px rgba(138, 59, 34, 0.4);
-  background: rgba(138, 59, 34, 0.04);
+  background:
+    radial-gradient(circle at 30% 40%, rgba(138,59,34,0.10), transparent 60%),
+    radial-gradient(circle at 70% 70%, rgba(138,59,34,0.06), transparent 50%),
+    rgba(138, 59, 34, 0.03);
+  /* uneven ink — patched opacity via a noise mask blend */
+  filter: contrast(0.95);
+}
+.stamp::after {
+  /* ink distress — missing patches like an unevenly inked stamp */
+  content: "";
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='40'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='2' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23s)'/%3E%3C/svg%3E");
+  mix-blend-mode: screen;
+  opacity: 0.4;
+  border-radius: 2px;
 }
 
 /* ============================================================
    STRING / PINS (evidence board)
    ============================================================ */
+/* pin — spherical brass head with a directional drop shadow cast by the desk
+ * lamp (light from above). The shadow is offset down-right and long. */
 .pin {
+  position: relative;
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #e7b766, #8a3b22 70%, #3a1408);
-  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.6);
+  background:
+    radial-gradient(circle at 36% 30%, #f0c87a 0%, #b8762a 45%, #6e3a12 80%, #3a1408 100%);
+  box-shadow:
+    0 1px 1px rgba(0,0,0,0.4),
+    /* contact shadow */
+    3px 5px 6px rgba(0,0,0,0.65),
+    /* long cast shadow from the lamp */
+    inset 0 -2px 3px rgba(0,0,0,0.5),
+    inset 0 1px 1px rgba(255,220,150,0.5);
+}
+/* the thin needle under the head */
+.pin::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 60%;
+  width: 1.4px;
+  height: 8px;
+  background: linear-gradient(to bottom, #3a2a14, rgba(58,42,20,0));
+  transform: translateX(-50%) rotate(8deg);
+  filter: blur(0.3px);
+  opacity: 0.7;
+}
+
+/* string — a sagging thread. The element using .string-path should be an SVG
+ * path/quadratic curve; the dasharray gives a fibrous look. */
+.string-path {
+  stroke: var(--rust);
+  stroke-width: 1.5;
+  fill: none;
+  opacity: 0.7;
+  stroke-dasharray: 4 3;
+  filter: drop-shadow(0 1.5px 1.5px rgba(0,0,0,0.55));
+  stroke-linecap: round;
 }
 
 /* ============================================================
@@ -347,16 +486,6 @@
 /* tape reel */
 @keyframes reelSpin {
   to { transform: rotate(360deg); }
-}
-
-/* string draw */
-.string-path {
-  stroke: var(--rust);
-  stroke-width: 1.4;
-  fill: none;
-  opacity: 0.65;
-  stroke-dasharray: 4 3;
-  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5));
 }
 
 /* small helper to clip text */

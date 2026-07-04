@@ -148,15 +148,25 @@ export default function Intro({ onEnter }: { onEnter: () => void }) {
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                   boxShadow:
-                    "0 40px 90px rgba(0,0,0,0.9), 0 0 60px rgba(231,183,102,0.08)",
+                    "0 40px 90px rgba(0,0,0,0.9), 0 0 60px rgba(231,183,102,0.08), inset 0 0 120px rgba(0,0,0,0.55), inset 0 2px 2px rgba(231,183,102,0.12)",
                 }}
               >
-                {/* darken overlay so text is readable */}
+                {/* worn-leather grain — a fine pebbled noise over the cover */}
+                <div
+                  className="pointer-events-none absolute inset-0"
+                  style={{
+                    opacity: 0.35,
+                    mixBlendMode: "overlay",
+                    backgroundImage:
+                      "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='lg'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23lg)'/%3E%3C/svg%3E\")",
+                  }}
+                />
+                {/* darken overlay so text is readable, with a lamp hotspot */}
                 <div
                   className="absolute inset-0"
                   style={{
                     background:
-                      "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.2) 40%, rgba(0,0,0,0.6) 100%)",
+                      "radial-gradient(ellipse at 50% 38%, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.55) 60%, rgba(0,0,0,0.78) 100%)",
                   }}
                 />
 
@@ -167,7 +177,10 @@ export default function Intro({ onEnter }: { onEnter: () => void }) {
                     style={{
                       fontSize: "clamp(1.4rem, 5vw, 2.6rem)",
                       letterSpacing: "0.12em",
-                      textShadow: "0 2px 12px rgba(0,0,0,0.9)",
+                      /* debossed into leather: a dark press-shadow below + a
+                       * bright top edge catching the lamp light */
+                      textShadow:
+                        "0 3px 14px rgba(0,0,0,0.95), 0 2px 2px rgba(0,0,0,0.85), 0 1px 0 rgba(0,0,0,0.6), -1px -1px 0.5px rgba(255,220,150,0.5), 1px -1px 0.5px rgba(255,220,150,0.35)",
                     }}
                   >
                     {phase === "typing" || phase === "ready" || phase === "opening" ? (

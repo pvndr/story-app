@@ -25,7 +25,7 @@ export function Paper({
 }) {
   return (
     <div
-      className={`relative ${dark ? "paper-dark" : "paper"} ${
+      className={`relative ${dark ? "paper-dark" : "paper"} foxing ${
         ruled ? "ruled" : ""
       } ${grain ? "grain" : ""} ${deckle ? "deckle" : ""} ${className}`}
       style={style}
@@ -66,7 +66,7 @@ export function Handwritten({
 }) {
   return (
     <span
-      className={`font-[family-name:var(--font-hand)] ${className}`}
+      className={`font-[family-name:var(--font-hand)] ink-hand ${className}`}
       style={{
         transform: `rotate(${rotate}deg)`,
         color,
@@ -85,18 +85,20 @@ export function CoffeeStain({
   top = "10%",
   left = "70%",
   opacity = 0.7,
+  old = false,
   className = "",
 }: {
   size?: number;
   top?: string | number;
   left?: string | number;
   opacity?: number;
+  old?: boolean;
   className?: string;
 }) {
   return (
     <div
       aria-hidden
-      className={`stain pointer-events-none ${className}`}
+      className={`stain ${old ? "old" : ""} pointer-events-none ${className}`}
       style={{
         width: size,
         height: size,
@@ -150,6 +152,8 @@ export function PaperClip({
 }
 
 /* ---------- Sticky note ---------- */
+/* A real sticky note: one edge (the taped/stuck top) lies flat, the opposite
+ * edge lifts slightly with a directional shadow cast by the desk lamp. */
 export function StickyNote({
   children,
   top = "8%",
@@ -171,24 +175,53 @@ export function StickyNote({
 }) {
   return (
     <div
-      className={`absolute z-20 font-[family-name:var(--font-hand)] shadow-lg ${className}`}
+      className={`absolute z-20 font-[family-name:var(--font-hand)] ink-hand ${className}`}
       style={{
         top,
         right,
         left,
         width,
         transform: `rotate(${rotate}deg)`,
-        background: color,
+        background: `linear-gradient(180deg, ${color} 0%, ${shade(color, -8)} 100%)`,
         color: "#3a2f1c",
-        padding: "10px 12px",
+        padding: "10px 12px 14px",
         fontSize: "15px",
         lineHeight: 1.25,
-        boxShadow: "2px 4px 10px rgba(0,0,0,0.5)",
+        /* the stuck top edge is sharp; the bottom lifts — directional shadow */
+        boxShadow:
+          "0 1px 1px rgba(0,0,0,0.3), 2px 5px 9px rgba(0,0,0,0.45), 4px 9px 16px rgba(0,0,0,0.25)",
+        /* a slight upward curl at the bottom-right corner */
+        clipPath:
+          "polygon(0 0, 100% 0, 100% 92%, 94% 100%, 0 100%)",
       }}
     >
       {children}
+      {/* the lifted corner shadow */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute"
+        style={{
+          right: 0,
+          bottom: 0,
+          width: "26%",
+          height: "18%",
+          background:
+            "linear-gradient(135deg, transparent 40%, rgba(0,0,0,0.18) 100%)",
+        }}
+      />
     </div>
   );
+}
+
+/* darken a hex color by amt (negative) for subtle gradients */
+function shade(hex: string, amt: number): string {
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex.trim());
+  if (!m) return hex;
+  const clamp = (v: number) => Math.max(0, Math.min(255, v));
+  const r = clamp(parseInt(m[1], 16) + amt);
+  const g = clamp(parseInt(m[2], 16) + amt);
+  const b = clamp(parseInt(m[3], 16) + amt);
+  return `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 }
 
 /* ---------- Redaction ---------- */

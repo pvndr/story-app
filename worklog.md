@@ -143,3 +143,37 @@ Stage Summary:
 - Investigation tracker (27 clues) rewards exploration and revisits.
 - Ending is a slow, silence-driven coda ending on the True Detective reveal + [Watch the Series].
 - No new sections added; no redesign. Every existing interaction elevated.
+
+---
+Task ID: CRIT
+Agent: main
+Task: Critic pass — identify 10 weakest illusion-breaking moments and fix only those (no layout/section changes)
+
+Work Log:
+Critique method: reviewed live site through Agent Browser + VLM acting as HBO title designer / Awwwards judge; cross-referenced with code reading of globals.css, MagnifierCursor, primitives, EvidenceBoard, Intro.
+
+The 10 weakest illusion-breaking moments + fixes:
+1. Magnifier didn't magnify (just a glowing ring) -> REWROTE MagnifierCursor: circular lens with overflow:hidden now contains a live clone (cloneNode) of the hovered .mag-target, fixed to the target's pixel size, scaled 1.8x, positioned each frame so the cursor point maps to lens centre. VLM confirms "zoomed-in view of the paper/photo beneath".
+2. Evidence-board strings were straight <line>s -> converted base + active-draw layers to <path> with a quadratic-bezier sagPath (control point below midpoint by min(46, span*0.18)px = gravity catenary); arrowhead midpoint offset to sit on the curve (y = my + sag/2).
+3. Pins cast no shadow -> .pin now has directional box-shadow (contact + long cast from the lamp) + a ::after needle; position:relative added.
+4. Redaction bars were solid flat rectangles -> .redact now uses a repeating-linear-gradient brush stripe (86deg, 2/4/6px) + a dry-brush noise ::before (SVG turbulence, screen blend) + slight skew + irregular border-radius. VLM confirms "brush/marker texture".
+5. Sticky notes had no shadow/curl -> StickyNote now has directional layered drop-shadow, a clipPath peeling bottom-right corner, a tonal gradient, and a lifted-corner shadow span. VLM confirms "peeling/lifted corner and shadow".
+6. Coffee stains were flat single rings -> .stain now has multi-ring radial gradient (5 stops) + irregular border-radius + multiply blend; added .stain.old darker aged variant + CoffeeStain `old` prop.
+7. Stamp was too clean/perfect -> .stamp now double-border, radial ink-pooling background, contrast filter, and a ::after SVG-turbulence distress mask (screen blend) for uneven impression.
+8. Handwritten ink was too crisp/uniform -> .ink-hand class (text-shadow bleed + 0.15px blur + contrast/saturate) auto-applied globally to every handwriting element via [class*="font-hand"],[style*="--font-hand"] selectors; Handwritten primitive + StickyNote use it.
+9. Notebook cover title floated flat, leather lacked depth -> Intro title text-shadow upgraded to a deboss (dark press-shadow below + bright top-edge highlight); cover gets a pebbled-leather SVG-noise overlay (overlay blend) + lamp-hotspot radial vignette + deeper inset shadows. VLM confirms "Debossed" + "fine pebbled grain".
+10. Paper edges clean, no age spots -> added .foxing::before (6 brown age-spots via radial gradients, multiply blend) applied to every Paper; deckle edge gets an outer highlight line.
+
+Verification:
+- Magnifier: VLM confirms zoomed content visible inside the lens (Fix 1 done)
+- Board: path data confirmed sagging (Q control point y=120.4 vs endpoint 62/87); pin computed box-shadow confirmed directional (Fix 2+3 done)
+- Case file: VLM confirms sticky-note peeling+shadow ✓, foxing+multi-ring stains ✓, redaction brush texture ✓ (Fix 4,5,6 done)
+- Intro: VLM confirms debossed title ✓ + pebbled leather grain ✓ (Fix 9 done)
+- Mobile (390px): no horizontal overflow across 8 scroll steps; no runtime/console errors
+- Desktop: board items still clickable, magnifier clones on hover, no console errors
+- Lint: clean (0 errors, 0 warnings)
+
+Stage Summary:
+- 10 surgical fixes applied; no layout changes, no new sections.
+- The magnifier is now a real optical instrument; strings sag under gravity; pins cast lamp-shadows; redactions read as marker; sticky notes peel; stains absorb in rings; stamps are unevenly inked; handwriting bleeds; the cover title is debossed into pebbled leather; paper shows foxing.
+- All existing interactions, audio, tracker, atmosphere, and the ending preserved.
