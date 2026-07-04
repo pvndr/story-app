@@ -27,11 +27,24 @@ export default function MagnifierCursor() {
     setEnabled(true);
     document.body.classList.add("cursor-magnify");
 
+    let lastRevealEl: Element | null = null;
     const onMove = (e: PointerEvent) => {
       pos.current = { x: e.clientX, y: e.clientY };
       const el = document.elementFromPoint(e.clientX, e.clientY);
       const isTarget = !!el?.closest(".mag-target");
       setFocused(isTarget);
+      // dispatch focus/blur to the .mag-reveal element under the lens so
+      // hidden annotations / invisible ink light up.
+      const revealEl = el?.closest(".mag-reveal, .invisible-ink");
+      if (revealEl !== lastRevealEl) {
+        if (lastRevealEl) {
+          lastRevealEl.dispatchEvent(new Event("mag-blur", { bubbles: true }));
+        }
+        if (revealEl) {
+          revealEl.dispatchEvent(new Event("mag-focus", { bubbles: true }));
+        }
+        lastRevealEl = revealEl;
+      }
     };
     const onDown = () => setDown(true);
     const onUp = () => setDown(false);

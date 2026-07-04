@@ -84,6 +84,12 @@ export default function FirstPage({ onContinue }: { onContinue?: () => void }) {
                 </div>
               </Reveal>
               <CoffeeStain size={150} top="70%" left="60%" opacity={0.55} />
+              {/* hidden discovery — invisible ink, only the magnifier reveals it */}
+              <div className="pointer-events-none absolute bottom-10 right-10 z-20 font-[family-name:var(--font-hand)] text-[14px]">
+                <span className="invisible-ink mag-target">
+                  the names repeat. every generation.
+                </span>
+              </div>
             </Paper>
           </div>
 

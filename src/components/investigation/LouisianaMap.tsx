@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Reveal, SectionLabel } from "./primitives";
 import { audio } from "@/lib/audio";
+import { useInvestigation } from "@/lib/investigation-progress";
 
 type Loc = {
   id: string;
@@ -76,6 +77,7 @@ const locations: Loc[] = [
 
 export default function LouisianaMap() {
   const [open, setOpen] = useState<Loc | null>(null);
+  const collect = useInvestigation((s) => s.collect);
 
   return (
     <section
@@ -149,6 +151,7 @@ export default function LouisianaMap() {
               key={l.id}
               onClick={() => {
                 audio.shutter();
+                collect(`map-${l.id}`);
                 setOpen(l);
               }}
               className="mag-target group absolute z-20 -translate-x-1/2 -translate-y-full"

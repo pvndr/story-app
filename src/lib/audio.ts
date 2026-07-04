@@ -268,6 +268,64 @@ const interactions = {
       q: 3,
     });
   },
+  photoPickup() {
+    // picking up a photograph: paper lift + faint slide
+    playNoiseBurst({
+      peak: 0.12,
+      attack: 0.004,
+      decay: 0.09,
+      filterType: "bandpass",
+      freq: 2200,
+      q: 0.8,
+    });
+    setTimeout(
+      () =>
+        playNoiseBurst({
+          peak: 0.06,
+          attack: 0.02,
+          decay: 0.14,
+          filterType: "bandpass",
+          freq: 1500,
+          q: 0.6,
+        }),
+      60
+    );
+  },
+  notebookClose() {
+    // notebook closing: slow leather creak + soft cover thud
+    if (!enabled || !ctx || !master) return;
+    const c = ctx;
+    const t = c.currentTime;
+    // long creak
+    const src = c.createBufferSource();
+    src.buffer = noiseBuffer(c);
+    src.loop = true;
+    const filt = c.createBiquadFilter();
+    filt.type = "bandpass";
+    filt.frequency.setValueAtTime(420, t);
+    filt.frequency.exponentialRampToValueAtTime(700, t + 0.7);
+    filt.Q.value = 3;
+    const g = c.createGain();
+    src.connect(filt);
+    filt.connect(g);
+    g.connect(master);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.14, t + 0.15);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+    src.start(t);
+    src.stop(t + 1.0);
+    // cover thud at the end
+    const osc = c.createOscillator();
+    const og = c.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(90, t + 0.85);
+    osc.frequency.exponentialRampToValueAtTime(38, t + 1.05);
+    osc.connect(og);
+    og.connect(master);
+    env(c, og, 0.2, 0.003, 0.22, t + 0.85);
+    osc.start(t + 0.85);
+    osc.stop(t + 1.2);
+  },
   click() {
     playNoiseBurst({
       peak: 0.14,
@@ -492,6 +550,128 @@ const ambientLayers: Layer[] = [
       };
     },
   },
+  // ceiling fan — slow low throb + faint mechanical tick
+  {
+    start(c, dest) {
+      const g = c.createGain();
+      g.gain.value = 0.015;
+      g.connect(dest);
+      // low air throb
+      const src = c.createBufferSource();
+      src.buffer = noiseBuffer(c);
+      src.loop = true;
+      const f = c.createBiquadFilter();
+      f.type = "lowpass";
+      f.frequency.value = 220;
+      f.Q.value = 0.7;
+      src.connect(f);
+      f.connect(g);
+      // slow LFO mimicking blade pass
+      const lfo = c.createOscillator();
+      const lfoG = c.createGain();
+      lfo.frequency.value = 0.9; // ~54 rpm
+      lfoG.gain.value = 0.012;
+      lfo.connect(lfoG);
+      lfoG.connect(g.gain);
+      // faint tick each pass
+      let stopped = false;
+      const tick = () => {
+        if (stopped) return;
+        const t = c.currentTime;
+        const o = c.createOscillator();
+        const tg = c.createGain();
+        o.type = "square";
+        o.frequency.value = 70;
+        o.connect(tg);
+        tg.connect(dest);
+        env(c, tg, 0.006, 0.001, 0.02, t);
+        o.start(t);
+        o.stop(t + 0.04);
+        setTimeout(tick, 1100 + Math.random() * 120);
+      };
+      src.start();
+      lfo.start();
+      setTimeout(tick, 1500);
+      this.stop = () => {
+        stopped = true;
+        try {
+          src.stop();
+          lfo.stop();
+        } catch {
+          /* noop */
+        }
+      };
+    },
+  },
+  // swamp ambience — low frog/creek bed, occasional distant calls
+  {
+    start(c, dest) {
+      let stopped = false;
+      const bed = c.createBufferSource();
+      bed.buffer = noiseBuffer(c);
+      bed.loop = true;
+      const bf = c.createBiquadFilter();
+      bf.type = "bandpass";
+      bf.frequency.value = 900;
+      bf.Q.value = 0.5;
+      const bg = c.createGain();
+      bg.gain.value = 0.018;
+      bed.connect(bf);
+      bf.connect(bg);
+      bg.connect(dest);
+      bed.start();
+      const schedule = () => {
+        if (stopped) return;
+        const t = c.currentTime;
+        // distant frog call — short pitch-down chirp
+        const o = c.createOscillator();
+        const g = c.createGain();
+        o.type = "sine";
+        const f0 = 380 + Math.random() * 260;
+        o.frequency.setValueAtTime(f0, t);
+        o.frequency.exponentialRampToValueAtTime(f0 * 0.7, t + 0.18);
+        o.connect(g);
+        g.connect(dest);
+        env(c, g, 0.012, 0.02, 0.22, t);
+        o.start(t);
+        o.stop(t + 0.3);
+        setTimeout(schedule, 4000 + Math.random() * 7000);
+      };
+      setTimeout(schedule, 2500);
+      this.stop = () => {
+        stopped = true;
+        try {
+          bed.stop();
+        } catch {
+          /* noop */
+        }
+      };
+    },
+  },
+  // tape hiss — steady high noise floor (the recorder is always on)
+  {
+    start(c, dest) {
+      const src = c.createBufferSource();
+      src.buffer = noiseBuffer(c);
+      src.loop = true;
+      const f = c.createBiquadFilter();
+      f.type = "highpass";
+      f.frequency.value = 4200;
+      const g = c.createGain();
+      g.gain.value = 0.006;
+      src.connect(f);
+      f.connect(g);
+      g.connect(dest);
+      src.start();
+      this.stop = () => {
+        try {
+          src.stop();
+        } catch {
+          /* noop */
+        }
+      };
+    },
+  },
 ];
 
 /* ============================================================
@@ -521,11 +701,11 @@ export const audio = {
       wrapper.stop = l.stop;
       activeNodes.push(wrapper);
     });
-    // fade in ambient
+    // fade in ambient — slow, weighted arrival
     const t = c.currentTime;
     ambientGain.gain.cancelScheduledValues(t);
     ambientGain.gain.setValueAtTime(0.0001, t);
-    ambientGain.gain.linearRampToValueAtTime(0.5, t + 2.5);
+    ambientGain.gain.linearRampToValueAtTime(0.42, t + 4.5);
     listeners.forEach((l) => l(true));
   },
   disable() {
@@ -554,6 +734,8 @@ export const audio = {
   stamp: interactions.stamp,
   drawer: interactions.drawer,
   pencil: interactions.pencil,
+  photoPickup: interactions.photoPickup,
+  notebookClose: interactions.notebookClose,
   click: interactions.click,
   strap: interactions.strap,
   thunder: interactions.thunder,

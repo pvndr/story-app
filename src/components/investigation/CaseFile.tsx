@@ -3,17 +3,24 @@
 import { motion } from "framer-motion";
 import {
   CoffeeStain,
-  Handwritten,
+  Envelope,
+  InkSmudge,
   PaperClip,
   PaperButton,
+  PhotoWithBack,
   Redact,
   Reveal,
   SectionLabel,
+  Staple,
   StickyNote,
+  TornTape,
+  WearCluster,
 } from "./primitives";
 import { audio } from "@/lib/audio";
+import { useInvestigation } from "@/lib/investigation-progress";
 
 export default function CaseFile({ onContinue }: { onContinue?: () => void }) {
+  const collect = useInvestigation((s) => s.collect);
   return (
     <section
       id="case-file"
@@ -84,21 +91,33 @@ export default function CaseFile({ onContinue }: { onContinue?: () => void }) {
               <div className="mb-3 font-typewriter text-[10px] uppercase tracking-[0.25em] text-[var(--ink-faded)]">
                 Scene photographs
               </div>
-              <div className="flex flex-wrap gap-5">
-                <Polaroid
+              <div className="flex flex-wrap gap-6">
+                <PhotoWithBack
                   src="/evidence/polaroid-field.png"
-                  caption="the field. no one saw. — r.c."
+                  front="the field. no one saw."
+                  back="the grass was flat in a circle. no tire tracks. something walked here, or was walked here."
                   rotate={-4}
+                  width={140}
+                  height={140}
+                  onFlip={() => collect("case-photo-field")}
                 />
-                <Polaroid
+                <PhotoWithBack
                   src="/evidence/polaroid-tree.png"
-                  caption="old tree. mile 7."
+                  front="old tree. mile 7."
+                  back="three nights, same tire marks. nobody reported a vehicle. who keeps coming back?"
                   rotate={3}
+                  width={140}
+                  height={140}
+                  onFlip={() => collect("case-photo-tree")}
                 />
-                <Polaroid
+                <PhotoWithBack
                   src="/evidence/polaroid-house.png"
-                  caption="??? — not on any map"
+                  front="??? — not on any map"
+                  back="i checked the parish records back to the 60s. this house does not exist on paper. someone erased it."
                   rotate={-2}
+                  width={140}
+                  height={140}
+                  onFlip={() => collect("case-photo-house")}
                 />
               </div>
             </div>
@@ -155,8 +174,31 @@ export default function CaseFile({ onContinue }: { onContinue?: () => void }) {
               check mile markers 6–9. same soil.
             </StickyNote>
 
+            {/* hidden discoveries: a locked envelope + torn tape + invisible ink */}
+            <Envelope
+              top="62%"
+              right="4%"
+              rotate={3}
+              width={150}
+              label="do not open — evidence"
+              contents={
+                <>
+                  he said he was fishing. the bait was still dry in the box. — r.c.
+                </>
+              }
+            />
+            <TornTape width={90} height={22} top="8%" left="44%" rotate={-8} />
+            <Staple top="2%" left="18%" rotate={4} />
+            <InkSmudge size={70} top="70%" left="40%" rotate={20} opacity={0.6} />
+
+            {/* invisible ink — only the magnifier reveals it */}
+            <div className="pointer-events-none absolute bottom-6 left-8 z-30 font-[family-name:var(--font-hand)] text-[15px]">
+              <span className="invisible-ink mag-target">ask about the school. the one that closed.</span>
+            </div>
+
             <PaperClip top={3} left={40} rotate={6} />
             <CoffeeStain size={130} top="78%" left="6%" opacity={0.5} />
+            <WearCluster seedKey="case-file" count={5} />
           </div>
 
           <motion.div

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Reveal, SectionLabel, Redact } from "./primitives";
 import { audio } from "@/lib/audio";
+import { useInvestigation } from "@/lib/investigation-progress";
 
 type Dossier = {
   id: string;
@@ -67,6 +68,7 @@ const dossiers: Dossier[] = [
 
 export default function CharacterProfiles() {
   const [open, setOpen] = useState<string | null>("01");
+  const collect = useInvestigation((s) => s.collect);
 
   return (
     <section
@@ -94,6 +96,7 @@ export default function CharacterProfiles() {
                 <button
                   onClick={() => {
                     audio.drawer();
+                    if (!isOpen) collect(`dossier-${d.id}`);
                     setOpen(isOpen ? null : d.id);
                   }}
                   className="flex w-full items-center justify-between px-5 py-4 text-left"

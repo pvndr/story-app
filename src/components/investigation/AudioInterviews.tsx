@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Reveal, SectionLabel } from "./primitives";
 import { audio } from "@/lib/audio";
+import { useInvestigation } from "@/lib/investigation-progress";
 
 type Tape = {
   id: string;
@@ -79,9 +80,11 @@ const tapes: Tape[] = [
 export default function AudioInterviews() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const active = tapes.find((t) => t.id === activeId) ?? null;
+  const collect = useInvestigation((s) => s.collect);
 
   const play = (t: Tape) => {
     audio.cassette();
+    collect(`tape-${t.id}`);
     setActiveId(t.id);
   };
 

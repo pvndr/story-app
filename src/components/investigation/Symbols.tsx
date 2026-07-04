@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Reveal, SectionLabel } from "./primitives";
 import { audio } from "@/lib/audio";
+import { useInvestigation } from "@/lib/investigation-progress";
 
 type Sym = {
   name: string;
@@ -137,6 +138,7 @@ const symbols: Sym[] = [
 
 export default function Symbols() {
   const [active, setActive] = useState<number | null>(null);
+  const collect = useInvestigation((s) => s.collect);
   return (
     <section
       id="symbols"
@@ -158,6 +160,7 @@ export default function Symbols() {
               onMouseEnter={() => {
                 setActive(i);
                 audio.pencil();
+                collect(`symbol-${i}`);
               }}
               onMouseLeave={() => setActive(null)}
               whileHover={{ scale: 1.03 }}
