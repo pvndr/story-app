@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { CoffeeStain, Handwritten, Paper, PaperButton, Reveal } from "./primitives";
+import NarrationPlayer from "./NarrationPlayer";
 
 export default function FirstPage({ onContinue }: { onContinue?: () => void }) {
   return (
@@ -80,6 +81,16 @@ export default function FirstPage({ onContinue }: { onContinue?: () => void }) {
                     >
                       don't trust the dates. — r.c.
                     </Handwritten>
+                  </div>
+
+                  {/* voiceover — Rust reading his own opening note */}
+                  <div className="mt-6">
+                    <NarrationPlayer
+                      id="first-page"
+                      text="There are places that hold on. They keep the years, the weather, the names no one speaks anymore. I started this notebook because memory is a poor witness. It edits itself. It flatters the teller. What follows is what I could not explain away. I do not know yet if we are hunting a man — or something the land remembers."
+                      speed={0.82}
+                      align="left"
+                    />
                   </div>
                 </div>
               </Reveal>

@@ -1,6 +1,7 @@
 "use client";
 
 import { Reveal } from "./primitives";
+import NarrationPlayer from "./NarrationPlayer";
 import { motion } from "framer-motion";
 
 export default function PhilosophyPage({
@@ -51,8 +52,16 @@ export default function PhilosophyPage({
               {body}
             </p>
 
+            <div className="mt-6 flex justify-center">
+              <NarrationPlayer
+                id={`philosophy-${index}`}
+                text={`${title}. ${body}`}
+                speed={0.8}
+              />
+            </div>
+
             <div
-              className="mt-8 text-right font-[family-name:var(--font-hand)] text-[1.2rem] text-[var(--blood)]"
+              className="mt-6 text-right font-[family-name:var(--font-hand)] text-[1.2rem] text-[var(--blood)]"
             >
               {signature}
             </div>

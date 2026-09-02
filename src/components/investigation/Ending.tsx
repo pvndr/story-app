@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useInView } from "framer-motion";
 import { Reveal, SectionLabel } from "./primitives";
+import NarrationPlayer from "./NarrationPlayer";
 import { audio } from "@/lib/audio";
 
 /* ------------------------------------------------------------------ *
@@ -299,6 +300,19 @@ export default function Ending() {
             >
               Some stories never leave you.
             </motion.p>
+
+            <motion.div
+              className="mt-6 flex justify-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: revealedCount >= 4 ? 1 : 0 }}
+              transition={{ duration: 1.2, delay: 1 }}
+            >
+              <NarrationPlayer
+                id="ending"
+                text="Some stories never leave you. Time leaves marks. Some never fade."
+                speed={0.78}
+              />
+            </motion.div>
 
             <motion.a
               href="https://www.max.com/shows/true-detective"

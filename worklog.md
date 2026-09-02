@@ -177,3 +177,29 @@ Stage Summary:
 - 10 surgical fixes applied; no layout changes, no new sections.
 - The magnifier is now a real optical instrument; strings sag under gravity; pins cast lamp-shadows; redactions read as marker; sticky notes peel; stains absorb in rings; stamps are unevenly inked; handwriting bleeds; the cover title is debossed into pebbled leather; paper shows foxing.
 - All existing interactions, audio, tracker, atmosphere, and the ending preserved.
+
+---
+Task ID: NARR
+Agent: main
+Task: Add interactive narrated storytelling — male voice narration (TTS) triggered on scroll
+
+Work Log:
+- Verified TTS skill: `jam` voice (English gentleman) works with wav format (mp3 unsupported by API). Tested via CLI.
+- src/app/api/narrate/route.ts: POST endpoint, server-side z-ai-web-dev-sdk TTS, voice="jam", speed configurable. In-memory cache (Map, sha1 key of text+voice+speed, max 50 entries LRU). Splits text >1024 chars into sentence-aware chunks. Returns audio/wav. dynamic=force-dynamic.
+- src/lib/narration.ts: Zustand store — voiceoverOn (localStorage-persisted), current (playing passage id), loading. narrationAllowed() helper. No autoplay: narration requires BOTH ambient-audio-enabled AND voiceoverOn.
+- src/components/investigation/NarrationPlayer.tsx: triggers on useInView (once), fetches /api/narrate, creates blob URL Audio, plays once per mount. REC dot + progress bar + replay button. Shows "voice…" (loading) / "narrating" (playing) / "replay ▸" (idle). Stops if voiceover toggled off. Only one narration at a time (store.current).
+- src/components/investigation/AudioToggle.tsx: added a second toggle (Voiceover On/Off) that appears below the main audio toggle once ambient audio is enabled. Enabling voiceover implicitly enables ambient audio (single gesture).
+- Wired NarrationPlayer into: FirstPage (opening note, ~5 sentences), PhilosophyPage x3 (title + body, speed 0.8), Ending ("Some stories never leave you. Time leaves marks. Some never fade." speed 0.78).
+- Voice direction: `jam` (low, measured English male), speed 0.78–0.85 for slow, deliberate cadence matching the Southern Gothic atmosphere.
+
+Verification:
+- API route: curl POST returns HTTP 200, audio/wav, valid RIFF WAVE 16-bit mono 24kHz (113KB for short, 1.9MB for first-page passage)
+- Browser flow: enter notebook -> enable audio -> enable voiceover -> narration players appear ("replay narration" buttons) -> click -> console confirms "[narration] playing OK" -> button shows "NARRATING" during playback -> progress bar fills
+- Caching confirmed: subsequent /api/narrate POSTs return in ~16ms (cache hit)
+- Mobile (390px): no horizontal overflow across 8 scroll steps; no runtime/console errors
+- Lint: clean (0 errors, 0 warnings); dev log: 200 responses + POST /api/narrate 200
+
+Stage Summary:
+- Interactive narrated storytelling is live. A low, measured male voice (TTS "jam") narrates Rust Cohle's opening note, the three philosophy reflections, and the final ending line — triggered as each section scrolls into view, gated behind an explicit voiceover toggle so nothing autoplays.
+- Each passage synthesizes once and is cached server-side. Visitors can replay any passage via its in-page "replay ▸" affordance.
+- No layout changes, no new sections. All existing interactions, atmosphere, tracker, and the ending preserved.
