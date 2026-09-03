@@ -310,7 +310,7 @@ export default function Ending() {
               <NarrationPlayer
                 id="ending"
                 text="Some stories never leave you. Time leaves marks. Some never fade."
-                speed={0.78}
+                playbackRate={0.76}
               />
             </motion.div>
 

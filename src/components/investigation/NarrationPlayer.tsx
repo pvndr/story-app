@@ -4,29 +4,30 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import { useNarration } from "@/lib/narration";
 import { audio } from "@/lib/audio";
+import { buildNarrationGraph, resumeNarrationContext } from "@/lib/narration-audio";
 
 /**
  * Narrates a passage when it scrolls into view.
  *
- * Rules:
- *  - Only plays when ambient audio is enabled AND the visitor has turned
- *    voiceover on (the no-autoplay contract).
- *  - Only one narration at a time — requesting a new one stops the previous.
- *  - Plays once per mount (once:true inView).
+ * The voice is the TTS "jam" (the only native-English voice in the catalogue),
+ * run through a Web Audio pitch-down + lowpass + gravel chain so it reads as a
+ * low, measured, world-weary male rather than a child. See narration-audio.ts.
  *
- * Place this anywhere in a section; it renders a tiny "VOICEOVER" affordance
- * that lights up while speaking, so the visitor understands where the voice
- * is coming from.
+ * Rules:
+ *  - Only plays when ambient audio is enabled AND voiceover is on (no autoplay).
+ *  - Only one narration at a time.
+ *  - Plays once per mount (once:true inView); replay via the affordance.
  */
 export default function NarrationPlayer({
   id,
   text,
-  speed = 0.85,
+  playbackRate = 0.82,
   align = "center",
 }: {
   id: string;
   text: string;
-  speed?: number;
+  /** playback rate (with preservesPitch=false, this also drops the pitch) */
+  playbackRate?: number;
   align?: "left" | "center";
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -37,7 +38,9 @@ export default function NarrationPlayer({
   const setCurrent = useNarration((s) => s.setCurrent);
   const setLoading = useNarration((s) => s.setLoading);
   const [progress, setProgress] = useState(0);
-  const audioElRef = useRef<HTMLAudioElement | null>(null);
+  const graphRef = useRef<ReturnType<typeof buildNarrationGraph> | null>(null);
+  const cleanupRef = useRef<(() => void) | null>(null);
+  const urlRef = useRef<string | null>(null);
   const playedRef = useRef(false);
 
   const isPlaying = current === id;
@@ -52,12 +55,22 @@ export default function NarrationPlayer({
 
   // if voiceover gets toggled off mid-playback, stop
   useEffect(() => {
-    if (!voiceoverOn && audioElRef.current) {
-      audioElRef.current.pause();
-      audioElRef.current = null;
+    if (!voiceoverOn && graphRef.current?.el) {
+      graphRef.current.el.pause();
+      cleanupRef.current?.();
+      cleanupRef.current = null;
+      graphRef.current = null;
       setCurrent(null);
     }
   }, [voiceoverOn, setCurrent]);
+
+  // cleanup on unmount
+  useEffect(() => {
+    return () => {
+      cleanupRef.current?.();
+      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+    };
+  }, []);
 
   async function play() {
     setCurrent(id);
@@ -66,24 +79,38 @@ export default function NarrationPlayer({
       const res = await fetch("/api/narrate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, voice: "jam", speed }),
+        body: JSON.stringify({ text, voice: "jam", speed: 1.0 }),
       });
       if (!res.ok) throw new Error(`narrate ${res.status}`);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
-      const el = new Audio(url);
-      audioElRef.current = el;
-      el.volume = 0.9;
+      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+      urlRef.current = url;
+
+      const graph = buildNarrationGraph(url, { playbackRate });
+      if (!graph) throw new Error("audio graph unavailable");
+      graphRef.current = graph;
+      cleanupRef.current = graph.cleanup;
+      const el = graph.el;
+
       el.onended = () => {
         setCurrent(null);
         setProgress(0);
-        URL.revokeObjectURL(url);
-        audioElRef.current = null;
+        cleanupRef.current?.();
+        cleanupRef.current = null;
+        graphRef.current = null;
+        if (urlRef.current) {
+          URL.revokeObjectURL(urlRef.current);
+          urlRef.current = null;
+        }
       };
       el.ontimeupdate = () => {
         if (el.duration) setProgress(el.currentTime / el.duration);
       };
       setLoading(false);
+      // ensure the narration AudioContext is running (needs a prior gesture,
+      // which the voiceover-enable / replay click provides)
+      await resumeNarrationContext();
       await el.play();
     } catch (e) {
       console.error("[narration] failed", e);
@@ -92,11 +119,12 @@ export default function NarrationPlayer({
     }
   }
 
-  // manual replay (clicking the affordance)
   function replay() {
-    if (audioElRef.current) {
-      audioElRef.current.pause();
-      audioElRef.current = null;
+    if (graphRef.current?.el) {
+      graphRef.current.el.pause();
+      cleanupRef.current?.();
+      cleanupRef.current = null;
+      graphRef.current = null;
     }
     void play();
   }

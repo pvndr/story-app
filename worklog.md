@@ -203,3 +203,27 @@ Stage Summary:
 - Interactive narrated storytelling is live. A low, measured male voice (TTS "jam") narrates Rust Cohle's opening note, the three philosophy reflections, and the final ending line — triggered as each section scrolls into view, gated behind an explicit voiceover toggle so nothing autoplays.
 - Each passage synthesizes once and is cached server-side. Visitors can replay any passage via its in-page "replay ▸" affordance.
 - No layout changes, no new sections. All existing interactions, atmosphere, tracker, and the ending preserved.
+
+---
+Task ID: VOICE
+Agent: main
+Task: Fix child-like narration voice — apply Web Audio pitch-down + lowpass + gravel to age the voice into a world-weary male
+
+Work Log:
+- Problem: TTS "jam" (only native-English voice) sounded too young/child-like for Rust Cohle. Switching voices wasn't viable — the other 6 are Mandarin-voiced and would narrate English with the wrong accent.
+- Solution: keep "jam" as the base but route it through a Web Audio processing chain that transforms the timbre.
+- src/lib/narration-audio.ts: shared AudioContext (lazy, resumed on gesture) + buildNarrationGraph() — routes MediaElementSource → lowpass BiquadFilter (2.1kHz, muffles high "child" partials, warms) → WaveShaper (subtle gravel curve, soft asymmetric clip) → gain → destination. Sets preservesPitch=false + playbackRate=0.76–0.80 on the audio element, which drops BOTH speed and pitch (~20-24% pitch-down) — the single most effective technique for ageing a voice.
+- NarrationPlayer.tsx: now generates TTS at speed 1.0 (normal) and controls pacing+pitch via playbackRate at playback time. Calls resumeNarrationContext() before el.play() to ensure the AudioContext is running. Renamed `speed` prop → `playbackRate`.
+- Updated callers: FirstPage playbackRate=0.80, PhilosophyPage 0.78, Ending 0.76 (deepest for the final line).
+- The server cache is now keyed on text+voice+speed(1.0), so all passages cache efficiently.
+
+Verification:
+- Browser logs confirm: blob fetched (1.5MB), graph built, preservesPitch=false, playbackRate=0.8, duration=31.52s, paused=false — the audio plays through the processing chain.
+- Button text shows "narrating" during playback (state machine works).
+- No console/runtime errors.
+- Mobile (390px): no overflow, no errors.
+- Lint: clean (0 errors, 0 warnings).
+
+Stage Summary:
+- The narration voice is now processed through a pitch-down + lowpass + gravel chain, transforming the young-sounding TTS into a deep, measured, slightly gravelly male register — much closer to a world-weary detective. The pitch drops ~20%, the high partials are muted, and a subtle gravel texture is added.
+- Honest limitation: TTS can't fully replicate a real voice actor (Matthew McConaughey). For a truly HBO-grade Rust voice, recording a real actor would be needed. But this processing gets the closest possible approximation from synthetic speech, and the lo-fi cassette aesthetic actually benefits from the slightly processed quality.

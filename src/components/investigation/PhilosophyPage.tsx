@@ -56,7 +56,7 @@ export default function PhilosophyPage({
               <NarrationPlayer
                 id={`philosophy-${index}`}
                 text={`${title}. ${body}`}
-                speed={0.8}
+                playbackRate={0.78}
               />
             </div>
 
