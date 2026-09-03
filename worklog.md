@@ -227,3 +227,28 @@ Verification:
 Stage Summary:
 - The narration voice is now processed through a pitch-down + lowpass + gravel chain, transforming the young-sounding TTS into a deep, measured, slightly gravelly male register — much closer to a world-weary detective. The pitch drops ~20%, the high partials are muted, and a subtle gravel texture is added.
 - Honest limitation: TTS can't fully replicate a real voice actor (Matthew McConaughey). For a truly HBO-grade Rust voice, recording a real actor would be needed. But this processing gets the closest possible approximation from synthetic speech, and the lo-fi cassette aesthetic actually benefits from the slightly processed quality.
+
+---
+Task ID: VOICE-FIX
+Agent: main
+Task: Fix child-like voice + overlapping narrations
+
+Work Log:
+- Root cause 1 (voice not deeper): <audio>.preservesPitch=false is unreliable when routed through createMediaElementSource. Fix: decode the WAV to an AudioBuffer and play via AudioBufferSourceNode, whose playbackRate ALWAYS shifts pitch (no "preserve" concept). Generate TTS at speed 1.5x (pitch-preserving time-stretch), play buffer at playbackRate 0.6 → pitch drops ~7 semitones (child → deep male), net tempo 1.5×0.6=0.9x (near-natural).
+- Root cause 2 (voices overlap): each NarrationPlayer managed its own <audio> element; a new one didn't stop the previous. Fix: module-level singleton controller (narration-audio.ts) — playNarration() calls stopNarration() first, guaranteeing only one voice at a time. Plus a fetchLock to prevent concurrent API calls.
+- Root cause 3 (auto-trigger race): multiple NarrationPlayers auto-triggered simultaneously on scroll, crashing the dev server with concurrent 7s TTS requests. Fix: removed auto-trigger entirely — narration now plays ONLY on explicit click ("replay ▸" button). This gives the visitor control and eliminates concurrent fetches.
+- src/lib/narration-audio.ts: rewritten — AudioBufferSourceNode + lowpass + waveshaper graph; module-level active narration tracking; stopNarration() + playNarration() with onProgress/onEnded callbacks; acquireFetchLock/releaseFetchLock.
+- NarrationPlayer.tsx: uses playNarration(arrayBuffer) instead of managing its own audio element; no auto-trigger; replay() calls acquireFetchLock then play(); finally releases lock.
+- Per-passage playbackRate: 0.6 (first page, philosophy), 0.58 (ending, slightly deeper).
+
+Verification:
+- API: curl POST returns 200 with valid WAV (6.8s for first-page passage, cached on subsequent calls)
+- Browser: click "replay ▸" → button shows "narrating" → only ONE plays at a time → no overlap
+- dev.log: POST /api/narrate 200 in 6.8s (TTS generation succeeds)
+- Lint: clean (0 errors, 0 warnings)
+- Mobile: no overflow
+
+Stage Summary:
+- Voice is now pitched down ~7 semitones via AudioBufferSourceNode (guaranteed, no browser quirk) + lowpass + subtle gravel → deep, measured, world-weary male.
+- No overlap: module-level controller stops the previous narration before starting a new one.
+- No auto-trigger: narration plays only on explicit click, preventing concurrent fetch crashes.

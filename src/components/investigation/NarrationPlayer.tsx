@@ -4,29 +4,30 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import { useNarration } from "@/lib/narration";
 import { audio } from "@/lib/audio";
-import { buildNarrationGraph, resumeNarrationContext } from "@/lib/narration-audio";
+import { playNarration, stopNarration, acquireFetchLock, releaseFetchLock } from "@/lib/narration-audio";
 
 /**
  * Narrates a passage when it scrolls into view.
  *
- * The voice is the TTS "jam" (the only native-English voice in the catalogue),
- * run through a Web Audio pitch-down + lowpass + gravel chain so it reads as a
- * low, measured, world-weary male rather than a child. See narration-audio.ts.
+ * Voice: TTS "jam" (only native-English voice), generated at 1.5x speed then
+ * played back at `playbackRate` (default 0.6) via an AudioBufferSourceNode —
+ * which GUARANTEES a pitch drop of ~7 semitones (child → deep male) while the
+ * 1.5×0.6 = 0.9× net tempo stays near-natural. See narration-audio.ts.
  *
  * Rules:
  *  - Only plays when ambient audio is enabled AND voiceover is on (no autoplay).
- *  - Only one narration at a time.
- *  - Plays once per mount (once:true inView); replay via the affordance.
+ *  - Only ONE narration at a time — the controller stops the previous.
+ *  - Plays once per mount; replay via the affordance.
  */
 export default function NarrationPlayer({
   id,
   text,
-  playbackRate = 0.82,
+  playbackRate = 0.6,
   align = "center",
 }: {
   id: string;
   text: string;
-  /** playback rate (with preservesPitch=false, this also drops the pitch) */
+  /** buffer playback rate (drops pitch). 0.6 ≈ -7 semitones. */
   playbackRate?: number;
   align?: "left" | "center";
 }) {
@@ -38,94 +39,58 @@ export default function NarrationPlayer({
   const setCurrent = useNarration((s) => s.setCurrent);
   const setLoading = useNarration((s) => s.setLoading);
   const [progress, setProgress] = useState(0);
-  const graphRef = useRef<ReturnType<typeof buildNarrationGraph> | null>(null);
-  const cleanupRef = useRef<(() => void) | null>(null);
-  const urlRef = useRef<string | null>(null);
   const playedRef = useRef(false);
+  const idRef = useRef(id);
+  idRef.current = id;
 
   const isPlaying = current === id;
 
-  // trigger when in view + allowed
-  useEffect(() => {
-    if (!inView || playedRef.current) return;
-    if (!audio.isEnabled() || !voiceoverOn) return;
-    playedRef.current = true;
-    void play();
-  }, [inView, voiceoverOn]);
+  // No auto-trigger — narration only plays on explicit click. This prevents
+  // concurrent fetches (which crash the dev server during 7s TTS generation)
+  // and gives the visitor control over when to listen.
+  // The "replay ▸" button is the sole entry point.
 
-  // if voiceover gets toggled off mid-playback, stop
+  // if voiceover gets toggled off mid-playback, stop everything
   useEffect(() => {
-    if (!voiceoverOn && graphRef.current?.el) {
-      graphRef.current.el.pause();
-      cleanupRef.current?.();
-      cleanupRef.current = null;
-      graphRef.current = null;
+    if (!voiceoverOn) {
+      stopNarration();
       setCurrent(null);
     }
   }, [voiceoverOn, setCurrent]);
 
-  // cleanup on unmount
-  useEffect(() => {
-    return () => {
-      cleanupRef.current?.();
-      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
-    };
-  }, []);
-
   async function play() {
     setCurrent(id);
     setLoading(true);
+    setProgress(0);
     try {
       const res = await fetch("/api/narrate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, voice: "jam", speed: 1.0 }),
+        body: JSON.stringify({ text, voice: "jam", speed: 1.5 }),
       });
       if (!res.ok) throw new Error(`narrate ${res.status}`);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
-      urlRef.current = url;
+      const arrayBuffer = await res.arrayBuffer();
 
-      const graph = buildNarrationGraph(url, { playbackRate });
-      if (!graph) throw new Error("audio graph unavailable");
-      graphRef.current = graph;
-      cleanupRef.current = graph.cleanup;
-      const el = graph.el;
-
-      el.onended = () => {
-        setCurrent(null);
-        setProgress(0);
-        cleanupRef.current?.();
-        cleanupRef.current = null;
-        graphRef.current = null;
-        if (urlRef.current) {
-          URL.revokeObjectURL(urlRef.current);
-          urlRef.current = null;
-        }
-      };
-      el.ontimeupdate = () => {
-        if (el.duration) setProgress(el.currentTime / el.duration);
-      };
+      await playNarration(arrayBuffer, {
+        playbackRate,
+        onProgress: (p) => setProgress(p),
+        onEnded: () => {
+          setCurrent(null);
+          setProgress(0);
+        },
+      });
       setLoading(false);
-      // ensure the narration AudioContext is running (needs a prior gesture,
-      // which the voiceover-enable / replay click provides)
-      await resumeNarrationContext();
-      await el.play();
     } catch (e) {
       console.error("[narration] failed", e);
       setCurrent(null);
       setLoading(false);
+    } finally {
+      releaseFetchLock();
     }
   }
 
   function replay() {
-    if (graphRef.current?.el) {
-      graphRef.current.el.pause();
-      cleanupRef.current?.();
-      cleanupRef.current = null;
-      graphRef.current = null;
-    }
+    acquireFetchLock(); // overrides any existing lock for manual replay
     void play();
   }
 
