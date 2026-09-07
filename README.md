@@ -62,6 +62,3 @@ This project is fully configured and optimized for deployment on **Vercel**.
 - `src/lib/`: Core utilities, including the procedural audio engine and state management.
 - `public/`: Static assets like evidence images and logos.
 
-## 📜 License
-
-This project is licensed under the MIT License.
