@@ -140,7 +140,7 @@ export default function AudioInterviews() {
 function Transcript({ tape }: { tape: Tape }) {
   const [lineIdx, setLineIdx] = useState(0);
   const [typed, setTyped] = useState("");
-  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (lineIdx >= tape.transcript.length) return;

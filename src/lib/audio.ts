@@ -160,7 +160,7 @@ const interactions = {
       osc.type = "sine";
       osc.frequency.value = f;
       osc.connect(g);
-      g.connect(master);
+      g.connect(master!);
       env(c, g, i === 0 ? 0.14 : 0.06, 0.002, 0.5, t);
       osc.start(t);
       osc.stop(t + 0.6);

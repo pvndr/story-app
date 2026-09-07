@@ -670,7 +670,7 @@ function PhotoCard({
   );
 }
 
-function NoteCard({ active }: { id: ItemId; active: boolean }) {
+function NoteCard({ active }: { active: boolean }) {
   return (
     <div
       className="paper-dark grain relative p-3 font-[family-name:var(--font-hand)] text-[13px] leading-snug text-[var(--ink)]"
@@ -692,7 +692,7 @@ function NoteCard({ active }: { id: ItemId; active: boolean }) {
   );
 }
 
-function ReceiptCard({ active }: { id: ItemId; active: boolean }) {
+function ReceiptCard({ active }: { active: boolean }) {
   return (
     <div
       className="relative bg-[#d8cdb0] p-2 font-typewriter text-[9px] text-[var(--ink)]"
@@ -730,7 +730,7 @@ function ReceiptCard({ active }: { id: ItemId; active: boolean }) {
   );
 }
 
-function MapCard({ active }: { id: ItemId; active: boolean }) {
+function MapCard({ active }: { active: boolean }) {
   return (
     <div
       className="bg-[#c2b289] p-2 font-typewriter text-[10px] text-[var(--ink)]"

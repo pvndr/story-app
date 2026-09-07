@@ -23,24 +23,27 @@ export default function InvestigationTracker({
 
   const count = clues.size;
   const prevRef = useRef(0);
+  const timersRef = useRef<{ t1?: ReturnType<typeof setTimeout>; t2?: ReturnType<typeof setTimeout> }>({});
 
   useEffect(() => {
     if (count > prevRef.current) {
+      // Clear any existing timers before starting new ones
+      if (timersRef.current.t1) clearTimeout(timersRef.current.t1);
+      if (timersRef.current.t2) clearTimeout(timersRef.current.t2);
+
       // schedule both state updates inside a timer so they are not
       // synchronous setState-in-effect calls
-      const t = setTimeout(() => {
+      timersRef.current.t1 = setTimeout(() => {
         setPulse(true);
-        const t2 = setTimeout(() => setPulse(false), 2600);
-        // store cleanup on the timeout for the next render
-        (t as unknown as { _t2?: ReturnType<typeof setTimeout> })._t2 = t2;
+        timersRef.current.t2 = setTimeout(() => setPulse(false), 2600);
       }, 0);
-      return () => {
-        clearTimeout(t);
-        const t2 = (t as unknown as { _t2?: ReturnType<typeof setTimeout> })._t2;
-        if (t2) clearTimeout(t2);
-      };
     }
     prevRef.current = count;
+
+    return () => {
+      if (timersRef.current.t1) clearTimeout(timersRef.current.t1);
+      if (timersRef.current.t2) clearTimeout(timersRef.current.t2);
+    };
   }, [count]);
 
   if (!active) return null;

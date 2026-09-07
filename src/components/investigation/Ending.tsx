@@ -36,9 +36,18 @@ const EASE: [number, number, number, number] = [0.18, 0.7, 0.18, 1];
 
 export default function Ending() {
   const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-30%" });
+  const inView = useInView(ref, { margin: "-30%" }); // Removed once: true so it resets
   const [phase, setPhase] = useState<Phase>("page");
   const [revealedCount, setRevealedCount] = useState(0);
+
+  // Reset the ending animation if the user scrolls back up
+  useEffect(() => {
+    if (!inView) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPhase("page");
+      setRevealedCount(0);
+    }
+  }, [inView]);
 
   useEffect(() => {
     if (!inView) return;
@@ -310,7 +319,6 @@ export default function Ending() {
               <NarrationPlayer
                 id="ending"
                 text="Some stories never leave you. Time leaves marks. Some never fade."
-                playbackRate={0.58}
               />
             </motion.div>
 

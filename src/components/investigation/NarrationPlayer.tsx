@@ -22,12 +22,12 @@ import { playNarration, stopNarration, acquireFetchLock, releaseFetchLock } from
 export default function NarrationPlayer({
   id,
   text,
-  playbackRate = 0.6,
+  playbackRate = 0.95,
   align = "center",
 }: {
   id: string;
   text: string;
-  /** buffer playback rate (drops pitch). 0.6 ≈ -7 semitones. */
+  /** buffer playback rate. 0.95 for a slight drawl with ElevenLabs. */
   playbackRate?: number;
   align?: "left" | "center";
 }) {
@@ -45,11 +45,6 @@ export default function NarrationPlayer({
 
   const isPlaying = current === id;
 
-  // No auto-trigger — narration only plays on explicit click. This prevents
-  // concurrent fetches (which crash the dev server during 7s TTS generation)
-  // and gives the visitor control over when to listen.
-  // The "replay ▸" button is the sole entry point.
-
   // if voiceover gets toggled off mid-playback, stop everything
   useEffect(() => {
     if (!voiceoverOn) {
@@ -57,6 +52,21 @@ export default function NarrationPlayer({
       setCurrent(null);
     }
   }, [voiceoverOn, setCurrent]);
+
+  // Auto-play when scrolled into view
+  useEffect(() => {
+    if (inView && voiceoverOn && !playedRef.current) {
+      playedRef.current = true;
+      if (acquireFetchLock()) {
+        void play();
+      } else {
+        // If another narration is fetching/playing, wait a moment and try again
+        setTimeout(() => {
+          if (acquireFetchLock()) void play();
+        }, 1500);
+      }
+    }
+  }, [inView, voiceoverOn]);
 
   async function play() {
     setCurrent(id);
@@ -66,13 +76,16 @@ export default function NarrationPlayer({
       const res = await fetch("/api/narrate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, voice: "jam", speed: 1.5 }),
+        body: JSON.stringify({ text }),
       });
       if (!res.ok) throw new Error(`narrate ${res.status}`);
       const arrayBuffer = await res.arrayBuffer();
 
       await playNarration(arrayBuffer, {
-        playbackRate,
+        playbackRate: 1.0, // Normal speed
+        highpassHz: 180,   // Cuts out the booming bass
+        lowpassHz: 3000,   // Keeps it slightly muffled
+        gravel: 7,         // Heavy analog distortion/raspy texture
         onProgress: (p) => setProgress(p),
         onEnded: () => {
           setCurrent(null);
@@ -91,6 +104,7 @@ export default function NarrationPlayer({
 
   function replay() {
     acquireFetchLock(); // overrides any existing lock for manual replay
+    playedRef.current = true;
     void play();
   }
 

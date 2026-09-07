@@ -126,6 +126,7 @@ export async function playNarration(
   opts: {
     playbackRate?: number;
     lowpassHz?: number;
+    highpassHz?: number;
     gravel?: number;
     onEnded?: () => void;
     onProgress?: (p: number) => void;
@@ -145,24 +146,30 @@ export async function playNarration(
   source.buffer = buffer;
   source.playbackRate.value = rate;
 
-  const filter = c.createBiquadFilter();
-  filter.type = "lowpass";
-  filter.frequency.value = opts.lowpassHz ?? 2200;
-  filter.Q.value = 0.7;
+  const lowpass = c.createBiquadFilter();
+  lowpass.type = "lowpass";
+  lowpass.frequency.value = opts.lowpassHz ?? 2200;
+  lowpass.Q.value = 0.7;
+
+  const highpass = c.createBiquadFilter();
+  highpass.type = "highpass";
+  highpass.frequency.value = opts.highpassHz ?? 0;
+  highpass.Q.value = 0.7;
 
   const shaper = c.createWaveShaper();
-  shaper.curve = gravelCurve(opts.gravel ?? 3);
+  shaper.curve = gravelCurve(opts.gravel ?? 3) as any;
   shaper.oversample = "2x";
 
   const gain = c.createGain();
   gain.gain.value = 1.0;
 
-  source.connect(filter);
-  filter.connect(shaper);
+  source.connect(lowpass);
+  lowpass.connect(highpass);
+  highpass.connect(shaper);
   shaper.connect(gain);
   gain.connect(c.destination);
 
-  const nodes: AudioNode[] = [source, filter, shaper, gain];
+  const nodes: AudioNode[] = [source, lowpass, highpass, shaper, gain];
   const bufferDur = buffer.duration / rate;
 
   const a: Active = {

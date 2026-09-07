@@ -2,82 +2,59 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 
 /**
- * Narration TTS endpoint.
+ * Narration TTS endpoint (ElevenLabs).
  *
- * POST /api/narrate  { text: string, voice?: string, speed?: number }
- * -> audio/wav
+ * POST /api/narrate  { text: string }
+ * -> audio/mpeg
  *
- * Uses the z-ai-web-dev-sdk TTS (server-side only). The voice is a low,
- * measured English male ("jam") — fits the Southern Gothic detective cadence.
- *
- * Results are cached in-memory by a hash of (text, voice, speed) so each
- * passage is synthesized only once per server lifetime. Audio is WAV
- * (the API does not support mp3).
+ * Uses ElevenLabs API for high-quality TTS.
+ * Results are cached in-memory by a hash of the text to save credits.
  */
 
-const MAX_LEN = 1024; // API constraint
+const MAX_LEN = 5000; // ElevenLabs free tier limit per request is 5000.
 
 const cache = new Map<
   string,
-  { buf: Buffer; ts: number }
+  { buf: ArrayBuffer; ts: number }
 >();
 
-function key(text: string, voice: string, speed: number) {
-  return crypto
-    .createHash("sha1")
-    .update(`${voice}|${speed}|${text}`)
-    .digest("hex");
+function key(text: string) {
+  return crypto.createHash("sha1").update(text).digest("hex");
 }
 
-// chunk text longer than MAX_LEN into sentence-aware pieces
-function splitTextIntoChunks(text: string, maxLen = MAX_LEN): string[] {
-  const sentences = text.match(/[^.!?…]+[.!?…]+/g) || [text];
-  const chunks: string[] = [];
-  let cur = "";
-  for (const s of sentences) {
-    if ((cur + s).length <= maxLen) {
-      cur += s;
-    } else {
-      if (cur) chunks.push(cur.trim());
-      cur = s.length > maxLen ? s.slice(0, maxLen) : s;
-    }
+async function synthesize(text: string): Promise<ArrayBuffer> {
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+  if (!apiKey) {
+    throw new Error("ELEVENLABS_API_KEY environment variable is missing.");
   }
-  if (cur) chunks.push(cur.trim());
-  return chunks.length ? chunks : [text.slice(0, maxLen)];
-}
 
-async function synthesize(
-  text: string,
-  voice: string,
-  speed: number
-): Promise<Buffer> {
-  const ZAI = (await import("z-ai-web-dev-sdk")).default;
-  const zai = await ZAI.create();
-  const chunks = splitTextIntoChunks(text);
-  const buffers: Buffer[] = [];
-  for (const chunk of chunks) {
-    const res = await zai.audio.tts.create({
-      input: chunk,
-      voice,
-      speed,
-      response_format: "wav",
-      stream: false,
-    });
-    const ab = await res.arrayBuffer();
-    buffers.push(Buffer.from(new Uint8Array(ab)));
+  // "Brian" is a slightly higher, more conversational American male voice that takes gravel effects perfectly
+  const voiceId = "nPczCjzI2devNBz1zQrb"; 
+  const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "xi-api-key": apiKey,
+      "Content-Type": "application/json",
+      "Accept": "audio/mpeg",
+    },
+    body: JSON.stringify({
+      text: text,
+      model_id: "eleven_turbo_v2_5",
+      voice_settings: {
+        stability: 0.5,
+        similarity_boost: 0.5
+      }
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`ElevenLabs API error: ${response.status} - ${errorText}`);
   }
-  // concatenate WAV buffers. For a single chunk this is just the buffer.
-  // For multiple, the simplest robust approach is to join raw PCM payload
-  // after the first header — but WAV headers carry length, so naive concat
-  // would leave trailing junk. We keep it simple: if one chunk, return it;
-  // else return the first chunk's header + concatenated payloads (length
-  // may be slightly off for very long multi-chunk text, which is rare here).
-  if (buffers.length === 1) return buffers[0];
-  // strip headers from subsequent chunks (44-byte WAV header assumed)
-  const HEADER = 44;
-  const first = buffers[0];
-  const rest = buffers.slice(1).map((b) => b.subarray(HEADER));
-  return Buffer.concat([first, ...rest]);
+
+  return await response.arrayBuffer();
 }
 
 export async function POST(req: NextRequest) {
@@ -90,27 +67,26 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    const voice = typeof body.voice === "string" ? body.voice : "jam";
-    const speed =
-      typeof body.speed === "number" && body.speed >= 0.5 && body.speed <= 2.0
-        ? body.speed
-        : 0.85;
+    
+    // Safety crop for ElevenLabs free tier
+    const safeText = text.slice(0, MAX_LEN);
 
-    const k = key(text, voice, speed);
+    const k = key(safeText);
     const cached = cache.get(k);
     if (cached) {
       return new NextResponse(cached.buf, {
         status: 200,
         headers: {
-          "Content-Type": "audio/wav",
-          "Content-Length": String(cached.buf.length),
+          "Content-Type": "audio/mpeg",
+          "Content-Length": String(cached.buf.byteLength),
           "Cache-Control": "public, max-age=86400, immutable",
         },
       });
     }
 
-    const buf = await synthesize(text, voice, speed);
+    const buf = await synthesize(safeText);
     cache.set(k, { buf, ts: Date.now() });
+    
     // keep cache bounded
     if (cache.size > 50) {
       const oldest = [...cache.entries()].sort((a, b) => a[1].ts - b[1].ts)[0];
@@ -120,8 +96,8 @@ export async function POST(req: NextRequest) {
     return new NextResponse(buf, {
       status: 200,
       headers: {
-        "Content-Type": "audio/wav",
-        "Content-Length": String(buf.length),
+        "Content-Type": "audio/mpeg",
+        "Content-Length": String(buf.byteLength),
         "Cache-Control": "public, max-age=86400, immutable",
       },
     });
